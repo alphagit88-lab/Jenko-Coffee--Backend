@@ -11,8 +11,8 @@ class Inventory {
         i.description_name as item_name,
         i.item_number,
         i.price as default_price,
-        COALESCE(cip.price, i.price) as price,
-        CASE WHEN cip.price IS NOT NULL THEN true ELSE false END as is_custom_price,
+        COALESCE(cip_cust.price, cip_group.price, i.price) as price,
+        CASE WHEN cip_cust.price IS NOT NULL OR cip_group.price IS NOT NULL THEN true ELSE false END as is_custom_price,
         c.name as category_name,
         COALESCE(inv.quantity, 0) as warehouse_quantity,
         (SELECT COALESCE(SUM(quantity), 0) FROM salesperson_inventory WHERE item_id = i.id) as salesperson_quantity,
@@ -32,7 +32,9 @@ class Inventory {
       FROM items i
       LEFT JOIN inventory inv ON i.id = inv.item_id
       LEFT JOIN categories c ON i.category_id = c.id
-      LEFT JOIN customer_item_prices cip ON i.id = cip.item_id AND cip.customer_id = $1
+      LEFT JOIN customers cust ON cust.id = $1
+      LEFT JOIN customer_item_prices cip_cust ON i.id = cip_cust.item_id AND cip_cust.customer_id = $1
+      LEFT JOIN customer_item_prices cip_group ON i.id = cip_group.item_id AND cip_group.group_id = cust.group_id
       ORDER BY i.description_name ASC
     `;
     const result = await pool.query(query, [customerId]);

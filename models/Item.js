@@ -68,10 +68,11 @@ class Item {
 
   static async getGroupPrices(itemId) {
     const query = `
-      SELECT cip.*, cg.name as group_name
+      SELECT DISTINCT ON (cip.group_id) cip.*, cg.name as group_name
       FROM customer_item_prices cip
       JOIN customer_groups cg ON cip.group_id = cg.id
       WHERE cip.item_id = $1
+      ORDER BY cip.group_id, cip.updated_at DESC
     `;
     const result = await pool.query(query, [itemId]);
     return result.rows;
@@ -79,8 +80,8 @@ class Item {
 
   static async setGroupPrice(itemId, groupId, price) {
     const query = `
-      INSERT INTO customer_item_prices (item_id, group_id, price)
-      VALUES ($1, $2, $3)
+      INSERT INTO customer_item_prices (item_id, group_id, price, customer_id)
+      VALUES ($1, $2, $3, NULL)
       ON CONFLICT (item_id, group_id) WHERE group_id IS NOT NULL DO UPDATE
       SET price = EXCLUDED.price, updated_at = NOW()
       RETURNING *
@@ -107,8 +108,8 @@ class Item {
 
   static async setCustomerPrice(itemId, customerId, price) {
     const query = `
-      INSERT INTO customer_item_prices (item_id, customer_id, price)
-      VALUES ($1, $2, $3)
+      INSERT INTO customer_item_prices (item_id, customer_id, price, group_id)
+      VALUES ($1, $2, $3, NULL)
       ON CONFLICT (item_id, customer_id) WHERE customer_id IS NOT NULL DO UPDATE
       SET price = EXCLUDED.price, updated_at = NOW()
       RETURNING *
@@ -124,10 +125,12 @@ class Item {
 
   static async findByIdWithCustomerPrice(itemId, customerId) {
     const query = `
-      SELECT i.*, COALESCE(cip.price, i.price) as resolved_price,
-             CASE WHEN cip.price IS NOT NULL THEN true ELSE false END as is_custom_price
+      SELECT i.*, COALESCE(cip_cust.price, cip_group.price, i.price) as resolved_price,
+             CASE WHEN cip_cust.price IS NOT NULL OR cip_group.price IS NOT NULL THEN true ELSE false END as is_custom_price
       FROM items i
-      LEFT JOIN customer_item_prices cip ON i.id = cip.item_id AND cip.customer_id = $2
+      LEFT JOIN customers cust ON cust.id = $2
+      LEFT JOIN customer_item_prices cip_cust ON i.id = cip_cust.item_id AND cip_cust.customer_id = $2
+      LEFT JOIN customer_item_prices cip_group ON i.id = cip_group.item_id AND cip_group.group_id = cust.group_id
       WHERE i.id = $1
     `;
     const result = await pool.query(query, [itemId, customerId]);
