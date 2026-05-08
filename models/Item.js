@@ -66,6 +66,34 @@ class Item {
     return result.rows[0];
   }
 
+  static async getGroupPrices(itemId) {
+    const query = `
+      SELECT cip.*, cg.name as group_name
+      FROM customer_item_prices cip
+      JOIN customer_groups cg ON cip.group_id = cg.id
+      WHERE cip.item_id = $1
+    `;
+    const result = await pool.query(query, [itemId]);
+    return result.rows;
+  }
+
+  static async setGroupPrice(itemId, groupId, price) {
+    const query = `
+      INSERT INTO customer_item_prices (item_id, group_id, price)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (item_id, group_id) WHERE group_id IS NOT NULL DO UPDATE
+      SET price = EXCLUDED.price, updated_at = NOW()
+      RETURNING *
+    `;
+    const result = await pool.query(query, [itemId, groupId, price]);
+    return result.rows[0];
+  }
+
+  static async deleteGroupPrice(itemId, groupId) {
+    const query = `DELETE FROM customer_item_prices WHERE item_id = $1 AND group_id = $2`;
+    await pool.query(query, [itemId, groupId]);
+  }
+
   static async getCustomerPrices(itemId) {
     const query = `
       SELECT cip.*, c.name as customer_name, c.email as customer_email
@@ -81,7 +109,7 @@ class Item {
     const query = `
       INSERT INTO customer_item_prices (item_id, customer_id, price)
       VALUES ($1, $2, $3)
-      ON CONFLICT (item_id, customer_id) DO UPDATE
+      ON CONFLICT (item_id, customer_id) WHERE customer_id IS NOT NULL DO UPDATE
       SET price = EXCLUDED.price, updated_at = NOW()
       RETURNING *
     `;

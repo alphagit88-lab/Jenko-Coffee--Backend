@@ -12,13 +12,13 @@ class Customer {
     return nextId.toString().padStart(4, '0');
   }
 
-  static async create({ address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude }) {
+  static async create({ address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude, group_id }) {
     const final_account_id = account_id || await this.getNextAccountId();
     
     // Updated INSERT to customers table
     const query = `
-      INSERT INTO customers (name, address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
+      INSERT INTO customers (name, address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude, group_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
       RETURNING *
     `;
     // Sanitize values: convert empty strings to null for database compatibility
@@ -37,7 +37,8 @@ class Customer {
       (tobacco_expire_date && tobacco_expire_date !== "") ? tobacco_expire_date : null, 
       payment_type || null, 
       latitude || null, 
-      longitude || null
+      longitude || null,
+      group_id || null
     ];
     const result = await pool.query(query, values);
     return result.rows[0];
@@ -55,7 +56,7 @@ class Customer {
     return result.rows;
   }
 
-  static async update(id, { address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude }) {
+  static async update(id, { address, phone, account_id, permit_numbers, registered_company_name, dba, email, sales_tax_id, has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type, latitude, longitude, group_id }) {
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -64,7 +65,7 @@ class Customer {
       address, phone, account_id, permit_numbers, 
       registered_company_name, dba, email, sales_tax_id, 
       has_cigarette_permit, tobacco_permit_number, tobacco_expire_date, payment_type,
-      latitude, longitude
+      latitude, longitude, group_id
     };
 
     // Keep internal name in sync
@@ -76,7 +77,8 @@ class Customer {
     for (const [key, value] of Object.entries(fieldMap)) {
       if (value !== undefined) {
         updates.push(`${key} = $${paramCount++}`);
-        values.push(value);
+        // Convert empty strings to null for database compatibility
+        values.push((value === "" && key !== 'address') ? null : value);
       }
     }
 

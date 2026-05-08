@@ -46,7 +46,7 @@ class Inventory {
    * - ASSIGNMENT: Move from warehouse to salesperson.
    * - SALE: Sale by salesperson (decrements salesperson stock).
    */
-  static async updateStock({ item_id, quantity, type, notes, user_actor_id, unit_cost, salesperson_id }, client = null) {
+  static async updateStock({ item_id, quantity, type, notes, user_actor_id, unit_cost, salesperson_id, source_salesperson_id }, client = null) {
     const isSharedClient = !!client;
     if (!client) client = await pool.connect();
     
@@ -104,6 +104,58 @@ class Inventory {
           if (res.rowCount === 0 || res.rows[0].quantity < 0) {
               throw new Error('Insufficient stock with salesperson for this sale');
           }
+      }
+      else if (type === 'TRANSFER') {
+        if (!salesperson_id || !source_salesperson_id) {
+          throw new Error('Both source and recipient staff IDs required for transfer');
+        }
+        
+        // Deduction from Source Salesperson Stock
+        const res = await client.query(`
+            UPDATE salesperson_inventory 
+            SET quantity = quantity - $1 
+            WHERE item_id = $2 AND user_id = $3
+            RETURNING quantity
+        `, [Math.abs(quantity), item_id, source_salesperson_id]);
+
+        if (res.rowCount === 0 || res.rows[0].quantity < 0) {
+            throw new Error('Insufficient stock with source staff for this transfer');
+        }
+
+        // Addition to Target Salesperson Inventory
+        await client.query(`
+            INSERT INTO salesperson_inventory (item_id, user_id, quantity, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT ON CONSTRAINT salesperson_item_user_unique
+            DO UPDATE SET 
+                quantity = salesperson_inventory.quantity + EXCLUDED.quantity,
+                updated_at = NOW()
+        `, [item_id, salesperson_id, Math.abs(quantity)]);
+      }
+      else if (type === 'RETURN') {
+          if (!salesperson_id) throw new Error('Salesperson ID required for return');
+          
+          // Deduction from Salesperson Stock
+          const res = await client.query(`
+              UPDATE salesperson_inventory 
+              SET quantity = quantity - $1 
+              WHERE item_id = $2 AND user_id = $3
+              RETURNING quantity
+          `, [Math.abs(quantity), item_id, salesperson_id]);
+
+          if (res.rowCount === 0 || res.rows[0].quantity < 0) {
+              throw new Error('Insufficient stock with salesperson for this return');
+          }
+
+          // Addition back to Warehouse
+          await client.query(`
+            INSERT INTO inventory (item_id, quantity, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT ON CONSTRAINT inventory_item_id_unique 
+            DO UPDATE SET 
+              quantity = inventory.quantity + EXCLUDED.quantity,
+              updated_at = NOW()
+          `, [item_id, Math.abs(quantity)]);
       }
 
       // 2. Log Entry - CRITICAL: FIXED to include actor and staff IDs

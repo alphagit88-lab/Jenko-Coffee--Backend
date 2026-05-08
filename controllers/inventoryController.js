@@ -13,7 +13,7 @@ exports.getInventory = async (req, res) => {
 
 exports.updateStock = async (req, res) => {
   try {
-    const { item_id, quantity_changed, type, notes, unit_cost, salesperson_id } = req.body;
+    const { item_id, quantity_changed, type, notes, unit_cost, salesperson_id, source_salesperson_id } = req.body;
     
     if (!item_id || !quantity_changed || !type) {
       return res.status(400).json({ success: false, message: 'Item ID, quantity, and type are required' });
@@ -26,7 +26,8 @@ exports.updateStock = async (req, res) => {
       notes: notes || null, 
       user_actor_id: req.user?.id || null, 
       unit_cost: unit_cost || 0, 
-      salesperson_id: salesperson_id || null
+      salesperson_id: salesperson_id || null,
+      source_salesperson_id: source_salesperson_id || null
     });
     res.json({ success: true, data: updated });
   } catch (error) {

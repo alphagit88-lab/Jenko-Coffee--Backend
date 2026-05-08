@@ -6,6 +6,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const customerRoutes = require('./routes/customerRoutes');
+const customerGroupRoutes = require('./routes/customerGroupRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
@@ -67,6 +68,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/customer-groups', customerGroupRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/inventory', inventoryRoutes);

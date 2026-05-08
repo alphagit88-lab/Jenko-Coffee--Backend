@@ -94,3 +94,32 @@ exports.updateCustomerPrice = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
+
+exports.getGroupPrices = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const prices = await Item.getGroupPrices(id);
+    res.json({ success: true, data: prices });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+exports.updateGroupPrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { group_id, price } = req.body;
+    
+    if (price === null || price === undefined) {
+      await Item.deleteGroupPrice(id, group_id);
+      return res.json({ success: true, message: 'Group price removed' });
+    }
+
+    const updated = await Item.setGroupPrice(id, group_id, price);
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
