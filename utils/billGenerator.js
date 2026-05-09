@@ -29,8 +29,16 @@ const drawBillContent = (doc, data) => {
   doc.text(`Phone: ${shop.company_phone || ''}`, { align: 'center' });
   doc.moveDown(0.3);
 
-  const orderDate = clientTimestamp ? new Date(clientTimestamp) : new Date(order.created_at);
-  doc.text(orderDate.toLocaleString(), { align: 'center' });
+  let dateText = '';
+  if (clientTimestamp) {
+    dateText = clientTimestamp;
+    if (clientTimestamp.includes('T') && clientTimestamp.includes('Z')) {
+      dateText = new Date(clientTimestamp).toLocaleString();
+    }
+  } else {
+    dateText = new Date(order.created_at).toLocaleString();
+  }
+  doc.text(dateText, { align: 'center' });
   doc.moveDown(1);
 
   // --- TOP SECTION (SPLIT LEFT/RIGHT) ---
