@@ -163,7 +163,12 @@ const drawBillContent = (doc, data) => {
     }
   }
 
-  doc.moveDown(4); // Space for signatures
+  doc.moveDown(6); // Space for signatures
+
+  if (shop.site_name) {
+    doc.fontSize(8).text(shop.site_name, 10, doc.y, { align: 'center', width: 184 });
+    doc.moveDown(1);
+  }
 
   // Return the final Y position
   return doc.y;

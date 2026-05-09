@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS settings (
 INSERT INTO settings (key, value) VALUES
 ('company_name', 'SILVER EAGLE DISTRIBUTORS'),
 ('company_address', 'PO BOX 841521, DALLAS, TX 75284'),
-('company_phone', '713-869-4361')
+('company_phone', '713-869-4361'),
+('site_name', 'Jenko Coffee')
 ON CONFLICT (key) DO NOTHING;
