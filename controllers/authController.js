@@ -49,3 +49,39 @@ exports.login = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error', detail: error.message });
   }
 };
+
+// Get Admin Profile
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, data: user });
+  } catch (error) {
+    console.error('🔴 GET PROFILE ERROR:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Update Admin Profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const userId = req.user.id;
+
+    if (password) {
+      const hashedPassword = await User.hashPassword(password);
+      await User.updatePassword(userId, hashedPassword);
+    }
+
+    const updatedUser = await User.update(userId, { name, email });
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, data: updatedUser });
+  } catch (error) {
+    console.error('🔴 UPDATE PROFILE ERROR:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
